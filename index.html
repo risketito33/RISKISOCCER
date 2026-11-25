@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RISKISCORE</title>
+<style>
+:root{--bg:#f3f4f8;--card:#fff;--tx:#14172b;--mut:#6b7088;--line:#e4e6ee;--ac:#374df5;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1220;--card:#1a1e33;--tx:#eef0fa;--mut:#9aa0bd;--line:#2a2f4a;--ac:#6b7cff;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1220;--card:#1a1e33;--tx:#eef0fa;--mut:#9aa0bd;--line:#2a2f4a;--ac:#6b7cff;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--ac);z-index:10}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--ac);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px}
+header h1{margin:0;font-size:20px;letter-spacing:.12em;flex:1}
+header small{opacity:.85;font-size:11px}
+main{max-width:640px;margin:0 auto;padding:14px 14px 90px}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:10px 14px;background:var(--ac);color:#fff;font-weight:600}
+button.ghost{background:var(--line);color:var(--tx)}button.red{background:#e5484d}
+header button{background:rgba(255,255,255,.2)}
+.card{background:var(--card);border-radius:14px;padding:12px;margin-bottom:10px;border:1px solid var(--line)}
+.row{display:flex;align-items:center;gap:12px}.grow{flex:1;min-width:0}
+.pl{cursor:pointer}.pl b,.mt b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mut{color:var(--mut);font-size:13px}
+.av{border-radius:50%;object-fit:cover;background:var(--line);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--mut);flex:none}
+.bd{display:inline-block;min-width:38px;text-align:center;padding:4px 7px;border-radius:8px;font-weight:700;color:#fff;font-size:14px}
+.bd.big{font-size:26px;padding:6px 12px;border-radius:12px}
+.rk{width:22px;color:var(--mut);font-weight:700;text-align:center}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;text-align:center;margin-top:12px}
+.stats b{display:block;font-size:18px}
+.res{width:24px;height:24px;border-radius:50%;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+.leg{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sh{background:var(--card);width:100%;max-width:560px;max-height:88%;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));box-sizing:border-box}
+.sh h2{margin:0 0 6px;font-size:18px}
+label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
+input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--tx);font:inherit;box-sizing:border-box}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.acts{display:flex;gap:8px;margin-top:16px}.acts button{flex:1}
+.empty{text-align:center;padding:40px 10px;color:var(--mut)}
+.sr{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}.sr button{width:40px;padding:8px 0}.sr b{min-width:24px;text-align:center}
+.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 4px 14px rgba(0,0,0,.3);border-radius:28px;padding:14px 20px}
+</style></head><body>
+<header id="hd"></header><main id="app"></main>
+<script>
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let S={players:[]},cur=null,ref=null;
+const uid=()=>Math.random().toString(36).slice(2,9),num=x=>x===''||x==null?null:+x;
+const col=r=>r>=9?'#0ea5d9':r>=8?'#1fb96a':r>=7?'#8fcf2b':r>=6?'#f2c01e':r>=5?'#f28a1e':'#e5484d';
+const badge=(r,big)=>r==null?`<span class="bd${big?' big':''}" style="background:var(--line);color:var(--mut)">–</span>`:`<span class="bd${big?' big':''}" style="background:${col(r)};color:${r>=6&&r<8?'#14172b':'#fff'}">${r.toFixed(1)}</span>`;
+const avg=p=>{const m=p.matches.filter(x=>x.rating!=null);return m.length?m.reduce((a,x)=>a+x.rating,0)/m.length:null};
+const av=(p,s)=>/^data:image\//.test(p.photo||'')?`<img class="av" style="width:${s}px;height:${s}px" src="${p.photo}" alt="">`:`<div class="av" style="width:${s}px;height:${s}px;font-size:${s/2.6}px">${esc(p.name.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase())}</div>`;
+const fd=d=>d?new Date(d+'T12:00').toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'2-digit'}):'';
+const ST=[['g','Goles'],['a','Asistencias'],['pk','Pases clave'],['pg','Pases buenos'],['pm','Pases fallados'],['rg','Regates buenos'],['rm','Regates fallados'],['tp','Tiros a puerta'],['tf','Tiros fuera'],['dg','Duelos ganados'],['dp','Duelos perdidos'],['en','Entradas'],['in','Intercepciones'],['de','Despejes'],['fc','Faltas cometidas'],['fr','Faltas recibidas'],['pe','Pérdidas de balón'],['pa','Paradas'],['am','Tarjetas amarillas'],['ro','Tarjetas rojas']];
+const tot=(p,k)=>p.matches.reduce((t,m)=>t+(m[k]||0),0);
+const ratio=(p,a,b)=>{const x=tot(p,a),y=x+tot(p,b);return y?`${x}/${y} (${Math.round(100*x/y)}%)`:null};
+function statcard(p){const R=[['Goles',tot(p,'g')],['Asistencias',tot(p,'a')],['Pases buenos',ratio(p,'pg','pm')],['Pases clave',tot(p,'pk')],['Regates buenos',ratio(p,'rg','rm')],['Tiros a puerta',tot(p,'tp')],['Tiros fuera',tot(p,'tf')],['Duelos ganados',ratio(p,'dg','dp')],['Entradas',tot(p,'en')],['Intercepciones',tot(p,'in')],['Despejes',tot(p,'de')],['Faltas cometidas',tot(p,'fc')],['Faltas recibidas',tot(p,'fr')],['Pérdidas de balón',tot(p,'pe')],['Paradas',tot(p,'pa')],['Amarillas',tot(p,'am')],['Rojas',tot(p,'ro')]].filter(r=>r[1]);return R.length?`<div class="card"><b>Estadísticas totales</b>${R.map(r=>`<div class="sr"><span class="grow">${r[0]}</span><b>${r[1]}</b></div>`).join('')}</div>`:''}
+const W={g:1.5,a:1,pk:.3,pg:.02,pm:-.05,rg:.2,rm:-.1,tp:.2,tf:-.05,dg:.1,dp:-.1,en:.15,in:.15,de:.1,fc:-.1,fr:.05,pe:-.05,pa:.4,am:-.5,ro:-2};
+const calc=s=>Math.min(10,Math.max(1,Math.round((6+ST.reduce((t,[k])=>t+(W[k]||0)*(s[k]||0),0))*10)/10));
+const resOf=m=>m.gf>m.ga?['V','#1fb96a']:m.gf<m.ga?['D','#e5484d']:['E','#8a8fa8'];
+function save(){try{localStorage.setItem('riskiscore',JSON.stringify(S))}catch(e){}if(ref)try{ref.set({json:JSON.stringify(S)}).catch(()=>{})}catch(e){}}
+function render(){const a=$('#app'),h=$('#hd');const p=cur&&S.players.find(x=>x.id===cur);if(cur&&!p)cur=null;
+ h.innerHTML=p?`<button id="bk">←</button><h1>${esc(p.name)}</h1>`:`<h1>RISKISCORE</h1><small>Valoración 1–10</small>`;
+ if($('#bk'))$('#bk').onclick=()=>{cur=null;render()};
+ p?detail(a,p):list(a);window.scrollTo(0,0)}
+function list(a){const ps=[...S.players].sort((x,y)=>(avg(y)??-1)-(avg(x)??-1));
+ a.innerHTML=(ps.length?ps.map((p,i)=>`<div class="card pl row" data-id="${p.id}"><span class="rk">${i+1}</span>${av(p,48)}<div class="grow"><b>${esc(p.name)}</b><span class="mut">${esc([p.team,p.pos].filter(Boolean).join(' · '))} · ${p.matches.length} part.</span></div>${badge(avg(p))}</div>`).join(''):`<div class="empty">Aún no hay jugadores.<br>Pulsa «Añadir jugador» para empezar.</div>`)+
+ `<div class="card"><b>Escala de valoración</b><div class="leg">${[[9,'9+'],[8,'8–8.9'],[7,'7–7.9'],[6,'6–6.9'],[5,'5–5.9'],[4,'&lt;5']].map(([v,t])=>`<span class="bd" style="background:${col(v)};color:${v>=6&&v<8?'#14172b':'#fff'};font-size:12px">${t}</span>`).join('')}</div><details style="margin-top:10px"><summary class="mut">Cómo se calcula la nota</summary><div class="mut" style="margin-top:6px">Base 6.0 y se suma o resta por cada acción (aproximación de SofaScore, que no publica su fórmula): ${ST.map(([k,t])=>`${t} ${W[k]>0?'+':''}${W[k]}`).join(' · ')}. El resultado queda entre 1.0 y 10.</div></details></div><button class="fab" id="addp">+ Añadir jugador</button>`;
+ a.querySelectorAll('.pl').forEach(e=>e.onclick=()=>{cur=e.dataset.id;render()});$('#addp').onclick=()=>pform()}
+function detail(a,p){const ms=[...p.matches].sort((x,y)=>(y.date||'').localeCompare(x.date||'')),rs=ms.filter(m=>m.rating!=null).map(m=>m.rating);
+ const sum=k=>p.matches.reduce((t,m)=>t+(m[k]||0),0);
+ a.innerHTML=`<div class="card"><div class="row">${av(p,84)}<div class="grow"><b style="font-size:18px">${esc(p.name)}</b><div class="mut">${esc([p.team,p.pos,p.num?'#'+p.num:''].filter(Boolean).join(' · '))}</div></div>${badge(avg(p),1)}</div>
+ <div class="stats"><div><b>${p.matches.length}</b><span class="mut">Partidos</span></div><div><b>${sum('g')}</b><span class="mut">Goles</span></div><div><b>${sum('a')}</b><span class="mut">Asist.</span></div><div>${badge(rs.length?Math.max(...rs):null)}<br><span class="mut">Mejor</span></div><div>${badge(rs.length?Math.min(...rs):null)}<br><span class="mut">Peor</span></div></div>
+ ${rs.length?`<div class="mut" style="margin-top:12px">Forma (últimos 5)</div><div class="leg">${ms.filter(m=>m.rating!=null).slice(0,5).reverse().map(m=>badge(m.rating)).join('')}</div>`:''}</div>
+ ${statcard(p)}<div class="row" style="margin:14px 0 8px"><b class="grow">Partidos</b><button id="addm">+ Partido</button><button class="ghost" id="edp">Editar</button></div>
+ ${ms.length?ms.map(m=>{const[r,c]=resOf(m),sc=m.home?`${esc(p.team||'Equipo')} ${m.gf}–${m.ga} ${esc(m.rival)}`:`${esc(m.rival)} ${m.ga}–${m.gf} ${esc(p.team||'Equipo')}`;return`<div class="card mt row" data-m="${m.id}" style="cursor:pointer"><span class="res" style="background:${c}">${r}</span><div class="grow"><b>${sc}</b><span class="mut">${fd(m.date)}${m.min!=null?' · '+m.min+'’':''}${m.g?' · ⚽'+m.g:''}${m.a?' · 🅰'+m.a:''}</span></div>${badge(m.rating)}</div>`}).join(''):'<div class="empty">Sin partidos todavía.</div>'}`;
+ $('#addm').onclick=()=>mform(p);$('#edp').onclick=()=>pform(p);a.querySelectorAll('.mt').forEach(e=>e.onclick=()=>mform(p,p.matches.find(x=>x.id===e.dataset.m)))}
+function sheet(html){const m=document.createElement('div');m.className='ov';m.innerHTML=`<div class="sh">${html}</div>`;document.body.appendChild(m);m.onclick=e=>{if(e.target===m)m.remove()};m.querySelector('.cx').onclick=()=>m.remove();return m}
+function armDel(m,fn){const b=m.querySelector('.dl');if(!b)return;let s=0;b.onclick=()=>{if(!s){s=1;b.textContent='¿Seguro?';return}m.remove();fn()}}
+const val=(m,id)=>m.querySelector('#'+id).value;
+function pform(p){const n=!p;p=p||{matches:[]};let ph=p.photo||'';
+ const m=sheet(`<h2>${n?'Nuevo jugador':'Editar jugador'}</h2><label>Foto de perfil</label><div class="row">${av({name:p.name||'?',photo:ph},56)}<input type="file" id="ph" accept="image/*"></div>
+ <label>Nombre</label><input id="nm" value="${esc(p.name||'')}"><div class="g2"><div><label>Equipo</label><input id="tm" value="${esc(p.team||'')}"></div><div><label>Dorsal</label><input id="nu" type="number" value="${esc(p.num||'')}"></div></div>
+ <label>Posición</label><select id="ps">${['','Portero','Defensa','Centrocampista','Delantero'].map(x=>`<option ${x===p.pos?'selected':''}>${x}</option>`).join('')}</select>
+ <div class="acts"><button class="ghost cx">Cancelar</button><button id="sv">Guardar</button></div>${n?'':'<div class="acts"><button class="red dl">Eliminar jugador</button></div>'}`);
+ m.querySelector('#ph').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader;r.onload=()=>{const i=new Image;i.onload=()=>{const c=document.createElement('canvas');c.width=c.height=128;const s=Math.min(i.width,i.height);c.getContext('2d').drawImage(i,(i.width-s)/2,(i.height-s)/2,s,s,0,0,128,128);ph=c.toDataURL('image/jpeg',.82);m.querySelector('.av').outerHTML=av({name:'?',photo:ph},56)};i.src=r.result};r.readAsDataURL(f)};
+ m.querySelector('#sv').onclick=()=>{const nm=val(m,'nm').trim();if(!nm){m.querySelector('#nm').focus();return}
+  Object.assign(p,{name:nm,team:val(m,'tm').trim(),num:val(m,'nu'),pos:val(m,'ps'),photo:ph});if(n){p.id=uid();S.players.push(p);cur=p.id}save();m.remove();render()};
+ armDel(m,()=>{S.players=S.players.filter(x=>x!==p);cur=null;save();render()})}
+function mform(p,x){const n=!x;x=x||{home:true,date:new Date().toISOString().slice(0,10)};const v=k=>esc(x[k]??'');const st={};ST.forEach(([k])=>st[k]=x[k]||0);let man=x.rating!=null&&x.rating!==calc(st);
+ const m=sheet(`<h2>${n?'Nuevo partido':'Editar partido'}</h2><div class="g2"><div><label>Fecha</label><input id="dt" type="date" value="${v('date')}"></div><div><label>Condición</label><select id="hm"><option value="1" ${x.home?'selected':''}>Local</option><option value="0" ${x.home?'':'selected'}>Visitante</option></select></div></div>
+ <label>Rival</label><input id="rv" value="${v('rival')}"><div class="g2"><div><label>Goles de su equipo</label><input id="gf" type="number" min="0" value="${v('gf')}"></div><div><label>Goles del rival</label><input id="ga" type="number" min="0" value="${v('ga')}"></div></div>
+ <label>Minutos</label><input id="mn" type="number" min="0" max="130" value="${v('min')}"><label>Estadísticas del partido</label><div>${ST.map(([k,t])=>`<div class="sr"><span class="grow">${t}</span><button class="ghost" data-k="${k}" data-d="-1">−</button><b id="v_${k}">${st[k]}</b><button data-k="${k}" data-d="1">+</button></div>`).join('')}</div>
+ <label>Valoración 1.0–10.0 (se calcula con las estadísticas; puedes cambiarla)</label><input id="rt" type="number" step="0.1" min="1" max="10" value="${x.rating??calc(st)}"><button class="ghost" id="rc" style="margin-top:8px;width:100%">Recalcular con estadísticas</button>
+ <div class="acts"><button class="ghost cx">Cancelar</button><button id="sv">Guardar</button></div>${n?'':'<div class="acts"><button class="red dl">Eliminar partido</button></div>'}`);
+ m.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{const k=b.dataset.k;st[k]=Math.max(0,st[k]+ +b.dataset.d);m.querySelector('#v_'+k).textContent=st[k];if(!man)m.querySelector('#rt').value=calc(st)});
+ m.querySelector('#rt').oninput=()=>man=true;m.querySelector('#rc').onclick=()=>{man=false;m.querySelector('#rt').value=calc(st)};
+ m.querySelector('#sv').onclick=()=>{let r=num(val(m,'rt'));if(r!=null)r=Math.min(10,Math.max(1,Math.round(r*10)/10));
+  Object.assign(x,{date:val(m,'dt'),home:val(m,'hm')==='1',rival:val(m,'rv').trim()||'Rival',gf:num(val(m,'gf'))||0,ga:num(val(m,'ga'))||0,min:num(val(m,'mn')),rating:r});
+  ST.forEach(([k])=>x[k]=st[k]);if(n){x.id=uid();p.matches.push(x)}save();m.remove();render()};
+ armDel(m,()=>{p.matches=p.matches.filter(y=>y!==x);save();render()})}
+try{const t=localStorage.getItem('riskiscore');if(t)S=JSON.parse(t)}catch(e){}
+if(!Array.isArray(S.players))S={players:[]};
+render();
+(async()=>{try{if(!window.claude)return;const db=await claude.use('db');if(!db)return;ref=db.doc('riskiscore/state');
+ ref.onSnapshot(s=>{const d=typeof s.data==='function'?s.data():s.data;if(d&&d.json){try{const o=JSON.parse(d.json);if(Array.isArray(o.players)){S=o;render()}}catch(e){}}else if(S.players.length)save()},()=>{})}catch(e){}})();
+</script></body></html>

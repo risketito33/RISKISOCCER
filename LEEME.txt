@@ -1,0 +1,7 @@
+RISKISCORE
+==========
+1. Descomprime el zip.
+2. Abre index.html en tu navegador (Chrome, Safari, Firefox...).
+3. Los jugadores y partidos se guardan en el navegador donde la abras.
+
+Para subirla a una web propia, sube index.html tal cual (es un unico archivo).
